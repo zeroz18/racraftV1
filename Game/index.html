@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft-like Terrain Generation 3D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Initialisation de la scène, de la caméra et du rendu
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Génération du terrain
+        let worldWidth = 100; // Taille du monde en blocs
+        let worldHeight = 100;
+        const blockSize = 10; // Taille d'un bloc en pixels
+        const maxHeight = 50; // Hauteur maximale du terrain
+
+        const generateTerrain = () => {
+            const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+
+            for (let x = 0; x < worldWidth; x++) {
+                for (let y = 0; y < worldHeight; y++) {
+                    // Calcul de la hauteur en utilisant une fonction d'élévation aléatoire
+                    const elevation = Math.floor(Math.random() * maxHeight);
+
+                    // Choix de texture en fonction de l'élévation
+                    let texture;
+                    if (elevation > 30) {
+                        texture = 'img/textures/grass/top.png';
+                    } else {
+                        texture = 'img/textures/grass/1.png';
+                    }
+                    const material = new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load(texture) });
+                    const cube = new THREE.Mesh(geometry, material);
+
+                    // Position du cube
+                    const posX = (x - worldWidth / 2) * blockSize;
+                    const posY = elevation * blockSize / 2;
+                    const posZ = (y - worldHeight / 2) * blockSize;
+                    cube.position.set(posX, posY, posZ);
+
+                    scene.add(cube);
+
+                    // Ajout de blocs adjacents pour former un monde en relief
+                    if (x > 0) {
+                        const leftCube = cube.clone();
+                        leftCube.position.set(posX - blockSize, posY, posZ);
+                        scene.add(leftCube);
+                    }
+                    if (y > 0) {
+                        const frontCube = cube.clone();
+                        frontCube.position.set(posX, posY, posZ - blockSize);
+                        scene.add(frontCube);
+                    }
+                }
+            }
+        };
+
+        // Génération de nouveaux blocs lorsque le joueur avance
+        const generateNewBlocks = () => {
+            const playerPosition = player.position;
+            const direction = new THREE.Vector3(0, 0, -1); // Direction vers laquelle le joueur regarde (avance)
+            direction.applyQuaternion(player.quaternion); // Prendre en compte la rotation du joueur
+
+            const distanceThreshold = 50; // Distance à partir de laquelle les nouveaux blocs sont générés
+
+            const newPosition = playerPosition.clone().add(direction.multiplyScalar(distanceThreshold));
+            if (Math.abs(newPosition.x) > worldWidth * blockSize / 2 || Math.abs(newPosition.z) > worldHeight * blockSize / 2) {
+                worldWidth += 10; // Augmentation de la taille du monde
+                worldHeight += 10;
+                generateTerrain(); // Générer de nouveaux blocs
+            }
+        };
+
+        // Génération du joueur
+        const playerGeometry = new THREE.BoxGeometry(5, 10, 5);
+        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.set(0, 25, 0); // Position initiale du joueur
+        scene.add(player);
+
+        // Fonction pour gérer le déplacement du joueur
+        const movePlayer = (keyCode) => {
+            const speed = 5; // Vitesse de déplacement
+            switch (keyCode) {
+                case 90: // Z
+                    player.translateZ(-speed);
+                    break;
+                case 83: // S
+                    player.translateZ(speed);
+                    break;
+                case 81: // Q
+                    player.translateX(-speed);
+                    break;
+                case 68: // D
+                    player.translateX(speed);
+                    break;
+            }
+            updateCamera(); // Mettre à jour la position de la caméra pour suivre le joueur
+            generateNewBlocks(); // Générer de nouveaux blocs lorsque le joueur avance
+        };
+
+        // Fonction pour mettre à jour la position de la caméra
+        const updateCamera = () => {
+            camera.position.set(
+                player.position.x,
+                player.position.y + 50, // Position de la caméra au-dessus du joueur
+                player.position.z + 100 // Position de la caméra derrière le joueur
+            );
+            camera.lookAt(player.position); // Faire regarder la caméra vers le joueur
+        };
+
+        // Gestion des événements clavier pour le déplacement du joueur
+        document.addEventListener('keydown', (event) => {
+            movePlayer(event.keyCode);
+        });
+
+        // Positionnement initial de la caméra
+        updateCamera();
+
+        // Animation de la scène
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Appel de la fonction de génération de terrain et démarrage de l'animation
+        generateTerrain();
+        animate();
+    </script>
+</body>
+</html>
